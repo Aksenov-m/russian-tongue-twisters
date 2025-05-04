@@ -1,6 +1,12 @@
 const express = require("express");
 const cors = require("cors");
-const twisters = require("./data/all_twisters.json"); // Импорт данных
+const twisters = require("../data/all_twisters.json"); // Импорт данных
+const User = require('./models/user');
+
+// подключаемся к серверу mongo
+mongoose.connect(process.env.MONGODB)
+  .then(() => console.log('MongoDB подключён'))
+  .catch(err => console.error('Ошибка подключения к MongoDB:', err));
 
 const app = express();
 app.use(cors()); // Разрешаем запросы с любых доменов
@@ -56,6 +62,16 @@ app.get("/api/twisters/page/:num", (req, res) => {
     data: paginated,
   });
 });
+
+app.post('/user', (req, res) => {
+  const { id, first_name, last_name, username } = req.body;
+
+  User.create({ id, first_name, last_name, username })
+    // вернём записанные в базу данные
+    .then(user => res.send({ data: user }))
+    // данные не записались, вернём ошибку
+    .catch(err => res.status(500).send({ message: 'Произошла ошибка записи' }));
+}); 
 
 // Запуск сервера
 const PORT = 3000;
