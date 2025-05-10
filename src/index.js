@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const twisters = require("../data/all_twisters.json"); // Импорт данных
 const User = require('./models/user');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
 // подключаемся к серверу mongo
 mongoose.connect(process.env.MONGODB)
@@ -9,6 +11,8 @@ mongoose.connect(process.env.MONGODB)
   .catch(err => console.error('Ошибка подключения к MongoDB:', err));
 
 const app = express();
+// Middleware для разбора JSON тела
+app.use(express.json());
 app.use(cors()); // Разрешаем запросы с любых доменов
 
 // Базовый роут
@@ -25,6 +29,48 @@ app.get("/api/twisters", (req, res) => {
 app.get("/api/twisters/random", (req, res) => {
   const randomIndex = Math.floor(Math.random() * twisters.twisters.length);
   res.json(twisters.twisters[randomIndex]);
+});
+
+app.post('/api/user', (req, res) => {
+  console.log(req.body)
+  const { id, first_name, last_name, username } = req.body;
+  if (!id) {
+    return res.status(400).send({ message: 'ID пользователя обязательно' });
+  }
+
+  User.create({ telegram_id : id, first_name, last_name, username })
+    // вернём записанные в базу данные
+    .then(user => res.status(201).send({ data: user }))
+    .catch(err => {
+      console.error('Ошибка создания пользователя:', err);
+      res.status(500).send({ message: 'Ошибка создания пользователя' });
+    });
+});
+
+app.post('/api/user/:id', (req, res) => {
+  const { id } = req.body;
+
+  User.findOne({ telegram_id: id })
+  .then(user => {
+    if (!user) {
+      return res.status(404).send({ message: 'Пользователь не найден' });
+    }
+    res.send({ data: user });
+  })
+  .catch(err => {
+    console.error('Ошибка поиска пользователя:', err);
+    res.status(500).send({ message: 'Ошибка сервера' });
+  });
+});
+
+// получить количество записей в коллекции MongoDB
+app.get('/api/user/count', (req, res) => {
+  User.countDocuments()
+    .then(count => res.send({ count }))
+    .catch(err => {
+      console.error('Ошибка при подсчёте пользователей:', err);
+      res.status(500).send({ message: 'Ошибка при подсчёте пользователей' });
+    });
 });
 
 // 3. Фильтр по сложности
@@ -62,16 +108,6 @@ app.get("/api/twisters/page/:num", (req, res) => {
     data: paginated,
   });
 });
-
-app.post('/user', (req, res) => {
-  const { id, first_name, last_name, username } = req.body;
-
-  User.create({ id, first_name, last_name, username })
-    // вернём записанные в базу данные
-    .then(user => res.send({ data: user }))
-    // данные не записались, вернём ошибку
-    .catch(err => res.status(500).send({ message: 'Произошла ошибка записи' }));
-}); 
 
 // Запуск сервера
 const PORT = 3000;
