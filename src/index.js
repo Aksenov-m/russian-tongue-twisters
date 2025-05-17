@@ -46,9 +46,9 @@ app.post('/api/user', (req, res) => {
       res.status(500).send({ message: 'Ошибка создания пользователя' });
     });
 });
-
-app.post('/api/user/:id', (req, res) => {
-  const { id } = req.body;
+// возвращает пользователя
+app.get('/api/user/:id', (req, res) => {
+  const id = parseInt(req.params.id);
 
   User.findOne({ telegram_id: id })
   .then(user => {
